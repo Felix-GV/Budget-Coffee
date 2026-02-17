@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "scrape": "tsx scripts/scrape-daily.ts"
+    "scrape": "tsx scripts/scrape-daily.ts",
+    "export-data": "tsx scripts/export-data.ts"
   },
   "dependencies": {
     "axios": "^1.13.5",
@@ -20,6 +21,7 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.8",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
