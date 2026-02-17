@@ -7,6 +7,14 @@ import SearchBar from '@/components/SearchBar';
 import PriceChart from '@/components/PriceChart';
 import AlertForm from '@/components/AlertForm';
 
+function retailerSearchUrl(retailer: string, productName: string): string {
+  const q = encodeURIComponent(productName);
+  if (retailer === 'Woolworths') return `https://www.woolworths.com.au/shop/search/products?searchTerm=${q}`;
+  if (retailer === 'Amazon AU') return `https://www.amazon.com.au/s?k=${q}&i=grocery`;
+  if (retailer === 'Coles') return `https://www.coles.com.au/search?q=${q}`;
+  return '#';
+}
+
 interface Product {
   name: string;
   slug: string;
@@ -161,7 +169,7 @@ export default function ProductPage() {
               {sortedPrices.map((p, i) => (
                 <a
                   key={p.retailer}
-                  href={p.url}
+                  href={i === 0 ? p.url : retailerSearchUrl(p.retailer, product.name)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-stone-800 transition-colors group"
