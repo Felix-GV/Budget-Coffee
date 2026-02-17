@@ -45,27 +45,12 @@ function BrowseResults() {
   const [page, setPage] = useState(1);
   const perPage = 30;
 
-  const categoryMap: Record<string, string> = {
-    beans: 'Beans', ground: 'Ground', instant: 'Instant',
-    pods: 'Pods & Capsules', sachets: 'Sachets', coldbrew: 'Cold Brew',
-  };
-
   useEffect(() => {
     setLoading(true);
-    fetch('/data/products.json')
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then((data) => {
-        const all = data.products || [];
-        const filtered = category === 'all' ? all : all.filter((p: CoffeeProduct) => p.category === categoryMap[category]);
-        setProducts(filtered);
-        setLoading(false);
-      })
-      .catch(() => {
-        fetch(`/api/browse?category=${encodeURIComponent(category)}`)
-          .then(res => res.json())
-          .then(data => { setProducts(data.products || []); setLoading(false); })
-          .catch(() => setLoading(false));
-      });
+    fetch(`/api/browse?category=${encodeURIComponent(category)}`)
+      .then(res => res.json())
+      .then(data => { setProducts(data.products || []); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [category]);
 
   const filtered = products

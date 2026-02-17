@@ -7,13 +7,6 @@ import SearchBar from '@/components/SearchBar';
 import PriceChart from '@/components/PriceChart';
 import AlertForm from '@/components/AlertForm';
 
-function retailerSearchUrl(retailer: string, productName: string): string {
-  const q = encodeURIComponent(productName);
-  if (retailer === 'Woolworths') return `https://www.woolworths.com.au/shop/search/products?searchTerm=${q}`;
-  if (retailer === 'Amazon AU') return `https://www.amazon.com.au/s?k=${q}&i=grocery`;
-  if (retailer === 'Coles') return `https://www.coles.com.au/search?q=${q}`;
-  return '#';
-}
 
 interface Product {
   name: string;
@@ -37,85 +30,13 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Always try API first — it queries Turso for real price history
     fetch(`/api/product/${slug}`)
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
-        if (data.product) { setProduct(data.product); setLoading(false); }
-        else Promise.reject();
+        setProduct(data.product ?? null);
+        setLoading(false);
       })
-      .catch(() => {
-        // Fallback: build from static JSON with today as first data point
-        fetch('/data/products.json')
-          .then(res => res.ok ? res.json() : Promise.reject())
-          .then((data) => {
-            const products: Product[] = data.products || [];
-            const found = products.find((p: Product & { slug?: string }) => (p as Product & { slug: string }).slug === slug);
-            if (!found) { setLoading(false); return; }
-
-            const p = found as Product & { slug: string; category: string; retailer: string; price: number; url: string; brand: string };
-
-            function extractCount(name: string): number | null {
-              const m = name.toLowerCase().match(/\bpack\s+of\s+(\d+)\b/)
-                || name.toLowerCase().match(/\b(\d+)\s*(?:pack|pk|capsule|pod|sachet|serve|ct|count|stick)s?\b/);
-              return m ? parseInt(m[1]) : null;
-            }
-            function extractWeight(name: string): number | null {
-              const kg = name.toLowerCase().match(/(\d+(?:\.\d+)?)\s*kg/);
-              const g = name.toLowerCase().match(/(\d+(?:\.\d+)?)\s*g(?:ram)?s?\b/);
-              if (kg) return Math.round(parseFloat(kg[1]) * 1000);
-              if (g) return Math.round(parseFloat(g[1]));
-              return null;
-            }
-
-            const pWeight = extractWeight(p.name);
-            const pCount = extractCount(p.name);
-            const pBrand = p.brand?.toLowerCase() || '';
-            const STOP = new Set(['coffee','pack','the','and','with','for','from','each','per','roast','blend','dark','medium','light','organic','fair','trade','ground','beans','instant','capsules','pods','espresso','premium']);
-            const pWords = new Set(p.name.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)));
-
-            const retailerMap = new Map<string, { product: typeof p; score: number }>();
-            for (const other of products as Array<typeof p>) {
-              if (other.retailer === p.retailer) continue;
-              const oBrand = other.brand?.toLowerCase() || '';
-              let score = 0;
-              if (pBrand && oBrand) {
-                if (pBrand === oBrand) score += 8;
-                else if (pBrand.split(' ')[0] === oBrand.split(' ')[0]) score += 4;
-                else score -= 10;
-              }
-              const oWords = other.name.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
-              score += oWords.filter(w => pWords.has(w)).length * 2;
-              const oWeight = extractWeight(other.name);
-              if (pWeight && oWeight) {
-                if (Math.abs(pWeight - oWeight) / Math.max(pWeight, oWeight) < 0.05) score += 10;
-                else score -= 15;
-              }
-              const oCount = extractCount(other.name);
-              if (pCount && oCount) {
-                if (pCount === oCount) score += 10;
-                else score -= 15;
-              }
-              if (score < 10) continue;
-              const existing = retailerMap.get(other.retailer);
-              if (!existing || score > existing.score) retailerMap.set(other.retailer, { product: other, score });
-            }
-
-            const today = new Date().toISOString().split('T')[0];
-            setProduct({
-              ...p,
-              prices: [
-                { retailer: p.retailer, price: p.price, url: p.url, history: [{ date: today, price: p.price }] },
-                ...Array.from(retailerMap.values()).map(({ product: o }) => ({
-                  retailer: o.retailer, price: o.price, url: o.url,
-                  history: [{ date: today, price: o.price }],
-                })),
-              ].sort((a, b) => a.price - b.price),
-            });
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
-      });
+      .catch(() => setLoading(false));
   }, [slug]);
 
   if (loading) {
