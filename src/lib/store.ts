@@ -35,24 +35,31 @@ export async function getProductWithAlternatives(slug: string) {
 
   const latest = pricesRes.rows[pricesRes.rows.length - 1];
 
-  // Find cheapest product per other retailer in same category
+  // Find best matching product per other retailer using name similarity
   const othersRes = await db.execute({
     sql: `SELECT p.*, pr.price as latest_price, p.url as product_url
           FROM products p
           INNER JOIN prices pr ON pr.product_id = p.id AND pr.scraped_at = (
             SELECT MAX(scraped_at) FROM prices WHERE product_id = p.id
           )
-          WHERE p.category = ? AND p.retailer != ?
-          ORDER BY pr.price ASC`,
+          WHERE p.category = ? AND p.retailer != ?`,
     args: [product.category as string, product.retailer as string],
   });
 
-  // Dedupe by retailer (cheapest)
-  const retailerMap = new Map<string, typeof othersRes.rows[0]>();
+  const stopWords = new Set(['coffee','pack','the','and','with','for','from','each','per','roast','blend','dark','medium','light','organic','ground','beans','instant','capsules','pods']);
+  const nameWords = (product.name as string).toLowerCase().split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  const brand = (product.brand as string)?.toLowerCase() || '';
+
+  const retailerMap = new Map<string, { row: typeof othersRes.rows[0]; score: number }>();
   for (const row of othersRes.rows) {
-    if (!retailerMap.has(row.retailer as string)) {
-      retailerMap.set(row.retailer as string, row);
-    }
+    const otherLower = (row.name as string).toLowerCase();
+    const otherBrand = (row.brand as string)?.toLowerCase() || '';
+    let score = 0;
+    if (brand && otherBrand && (brand === otherBrand || otherLower.includes(brand) || brand.includes(otherBrand))) score += 5;
+    score += nameWords.filter(w => otherLower.includes(w)).length;
+    if (score < 2) continue;
+    const existing = retailerMap.get(row.retailer as string);
+    if (!existing || score > existing.score) retailerMap.set(row.retailer as string, { row, score });
   }
 
   return {
@@ -74,7 +81,7 @@ export async function getProductWithAlternatives(slug: string) {
           price: r.price as number,
         })),
       },
-      ...Array.from(retailerMap.values()).map(r => ({
+      ...Array.from(retailerMap.values()).map(({ row: r }) => ({
         retailer: r.retailer as string,
         price: r.latest_price as number,
         url: r.product_url as string,

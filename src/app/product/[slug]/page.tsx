@@ -44,21 +44,37 @@ export default function ProductPage() {
         const found = products.find((p: Product & { slug?: string }) => (p as Product & { slug: string }).slug === slug);
         if (!found) { setLoading(false); return; }
 
-        const p = found as Product & { slug: string; category: string; retailer: string; price: number; url: string };
+        const p = found as Product & { slug: string; category: string; retailer: string; price: number; url: string; brand: string };
 
-        // Find cheapest per other retailer in same category
-        const retailerMap = new Map<string, typeof p>();
+        // Find best matching product per other retailer using name similarity
+        const stopWords = new Set(['coffee','pack','the','and','with','for','from','each','per','roast','blend','dark','medium','light','organic','fair','trade','ground','beans','instant','capsules','pods']);
+        const nameWords = p.name.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+        const brand = p.brand?.toLowerCase() || '';
+
+        const retailerMap = new Map<string, { product: typeof p; score: number }>();
         for (const other of products as Array<typeof p>) {
-          if (other.category !== p.category || other.retailer === p.retailer) continue;
+          if (other.retailer === p.retailer) continue;
+          const otherLower = other.name.toLowerCase();
+          const otherBrand = other.brand?.toLowerCase() || '';
+
+          // Score: brand match + word overlap
+          let score = 0;
+          if (brand && otherBrand && (brand === otherBrand || otherLower.includes(brand) || brand.includes(otherBrand))) score += 5;
+          score += nameWords.filter(w => otherLower.includes(w)).length;
+
+          if (score < 2) continue; // Not similar enough
+
           const existing = retailerMap.get(other.retailer);
-          if (!existing || other.price < existing.price) retailerMap.set(other.retailer, other);
+          if (!existing || score > existing.score) {
+            retailerMap.set(other.retailer, { product: other, score });
+          }
         }
 
         setProduct({
           ...p,
           prices: [
             { retailer: p.retailer, price: p.price, url: p.url, history: [] },
-            ...Array.from(retailerMap.values()).map(o => ({ retailer: o.retailer, price: o.price, url: o.url, history: [] })),
+            ...Array.from(retailerMap.values()).map(({ product: o }) => ({ retailer: o.retailer, price: o.price, url: o.url, history: [] })),
           ].sort((a, b) => a.price - b.price),
         });
         setLoading(false);
@@ -169,7 +185,7 @@ export default function ProductPage() {
               {sortedPrices.map((p, i) => (
                 <a
                   key={p.retailer}
-                  href={i === 0 ? p.url : retailerSearchUrl(p.retailer, product.name)}
+                  href={p.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-stone-800 transition-colors group"
