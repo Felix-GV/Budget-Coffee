@@ -35,8 +35,10 @@ export async function searchAmazon(query: string): Promise<CoffeeProduct[]> {
   $('[data-component-type="s-search-result"]').each(function () {
     const card = $(this);
     const title = card.find('h2 span').text().trim();
-    const priceWhole = card.find('.a-price-whole').first().text().trim().replace(',', '');
-    const priceFrac = card.find('.a-price-fraction').first().text().trim();
+    const priceWhole = card.find('.a-price-whole').first().text().trim().replace(',', '').replace(/\.$/, '');
+    const rawFrac = card.find('.a-price-fraction').first().text().trim().replace('.', '');
+    // Pad single digit fractions (9 → 90, not 9)
+    const priceFrac = rawFrac.length === 1 ? rawFrac + '0' : rawFrac || '00';
     const image = card.find('img.s-image').attr('src') || '';
     // Try multiple selectors for the product link
     const link = card.find('h2 a').attr('href')
