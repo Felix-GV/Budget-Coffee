@@ -39,8 +39,7 @@ export default function Home() {
         <div className="mt-8 flex gap-4 flex-wrap justify-center text-stone-500 text-sm">
           <span>🟢 Woolworths</span>
           <span>🟠 Amazon AU</span>
-          <span>🔵 Supabarn</span>
-          <span className="text-stone-700">· Coles & IGA coming soon</span>
+          <span className="text-stone-700">· Coles, IGA & Supabarn coming soon</span>
         </div>
       </div>
       <footer className="text-center text-stone-700 text-sm py-6">
