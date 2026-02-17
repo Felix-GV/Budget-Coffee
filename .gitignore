@@ -40,5 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 bargain.db
+bargain.db-shm
+bargain.db-wal
 node_modules
 .next
