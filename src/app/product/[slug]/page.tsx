@@ -70,11 +70,15 @@ export default function ProductPage() {
           }
         }
 
+        const today = new Date().toISOString().split('T')[0];
         setProduct({
           ...p,
           prices: [
-            { retailer: p.retailer, price: p.price, url: p.url, history: [] },
-            ...Array.from(retailerMap.values()).map(({ product: o }) => ({ retailer: o.retailer, price: o.price, url: o.url, history: [] })),
+            { retailer: p.retailer, price: p.price, url: p.url, history: [{ date: today, price: p.price }] },
+            ...Array.from(retailerMap.values()).map(({ product: o }) => ({
+              retailer: o.retailer, price: o.price, url: o.url,
+              history: [{ date: today, price: o.price }],
+            })),
           ].sort((a, b) => a.price - b.price),
         });
         setLoading(false);
@@ -159,23 +163,16 @@ export default function ProductPage() {
         </div>
 
         {/* Price Chart */}
-        {hasHistory ? (
-          <div className="mb-8">
-            <PriceChart
-              priceData={product.prices
-                .filter((p) => p.history && p.history.length > 0)
-                .map((p) => ({
-                  retailer: p.retailer,
-                  history: p.history,
-                }))}
-            />
-          </div>
-        ) : (
-          <div className="mb-8 bg-stone-900 border border-stone-800 rounded-xl p-5 text-center">
-            <p className="text-stone-400">📊 Price history will build up as we track this product daily.</p>
-            <p className="text-stone-500 text-sm mt-1">Set a price alert below to get notified of drops!</p>
-          </div>
-        )}
+        <div className="mb-8">
+          <PriceChart
+            priceData={product.prices
+              .filter((p) => p.history && p.history.length > 0)
+              .map((p) => ({
+                retailer: p.retailer,
+                history: p.history,
+              }))}
+          />
+        </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* All Prices by retailer */}

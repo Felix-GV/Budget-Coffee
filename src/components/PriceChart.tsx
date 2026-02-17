@@ -33,12 +33,16 @@ export default function PriceChart({ priceData }: { priceData: PriceHistory[] })
     }));
 
   const allPrices = priceData.flatMap(p => p.history.map(h => h.price));
-  const minPrice = Math.floor(Math.min(...allPrices) * 0.95);
-  const maxPrice = Math.ceil(Math.max(...allPrices) * 1.05);
+  const minPrice = Math.floor(Math.min(...allPrices) * 0.9);
+  const maxPrice = Math.ceil(Math.max(...allPrices) * 1.1);
+  const isSingleDay = chartData.length === 1;
 
   return (
     <div className="w-full h-80 bg-stone-900 border border-stone-800 rounded-xl p-4">
-      <h3 className="text-white font-semibold mb-4">📊 Price History</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-white font-semibold">📊 Price History</h3>
+        {isSingleDay && <span className="text-xs text-stone-500">Tracking started today — chart fills in daily</span>}
+      </div>
       <ResponsiveContainer width="100%" height="85%">
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#44403c" />
@@ -57,8 +61,8 @@ export default function PriceChart({ priceData }: { priceData: PriceHistory[] })
               dataKey={retailer}
               stroke={retailerColors[retailer] || '#f97316'}
               strokeWidth={2}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
+              dot={{ r: isSingleDay ? 6 : 3 }}
+              activeDot={{ r: 7 }}
             />
           ))}
         </LineChart>
