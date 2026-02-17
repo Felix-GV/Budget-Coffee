@@ -38,7 +38,14 @@ export async function searchAmazon(query: string): Promise<CoffeeProduct[]> {
     const priceWhole = card.find('.a-price-whole').first().text().trim().replace(',', '');
     const priceFrac = card.find('.a-price-fraction').first().text().trim();
     const image = card.find('img.s-image').attr('src') || '';
-    const link = card.find('h2 a').attr('href') || '';
+    // Try multiple selectors for the product link
+    const link = card.find('h2 a').attr('href')
+      || card.find('a.a-link-normal[href*="/dp/"]').first().attr('href')
+      || card.find('a[href*="/dp/"]').first().attr('href')
+      || '';
+
+    // Use ASIN to build canonical URL if possible
+    const asin = card.attr('data-asin') || '';
 
     if (!title || !priceWhole) return;
 
@@ -89,7 +96,15 @@ export async function searchAmazon(query: string): Promise<CoffeeProduct[]> {
     const brandMatch = title.match(/^([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?)/);
     const brand = brandMatch ? brandMatch[1] : '';
 
-    const fullUrl = link.startsWith('http') ? link : `https://www.amazon.com.au${link}`;
+    // Build URL: prefer ASIN-based canonical, then parsed link, skip if neither
+    let fullUrl = '';
+    if (asin) {
+      fullUrl = `https://www.amazon.com.au/dp/${asin}`;
+    } else if (link && link !== '/') {
+      fullUrl = link.startsWith('http') ? link : `https://www.amazon.com.au${link}`;
+    } else {
+      return; // No valid URL, skip
+    }
 
     products.push({
       id: `amazon-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${products.length}`,
