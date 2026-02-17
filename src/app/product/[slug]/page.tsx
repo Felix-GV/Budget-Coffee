@@ -29,13 +29,38 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/product/${slug}`)
-      .then((res) => res.json())
+    fetch('/data/products.json')
+      .then(res => res.ok ? res.json() : Promise.reject())
       .then((data) => {
-        setProduct(data.product);
+        const products: Product[] = data.products || [];
+        const found = products.find((p: Product & { slug?: string }) => (p as Product & { slug: string }).slug === slug);
+        if (!found) { setLoading(false); return; }
+
+        const p = found as Product & { slug: string; category: string; retailer: string; price: number; url: string };
+
+        // Find cheapest per other retailer in same category
+        const retailerMap = new Map<string, typeof p>();
+        for (const other of products as Array<typeof p>) {
+          if (other.category !== p.category || other.retailer === p.retailer) continue;
+          const existing = retailerMap.get(other.retailer);
+          if (!existing || other.price < existing.price) retailerMap.set(other.retailer, other);
+        }
+
+        setProduct({
+          ...p,
+          prices: [
+            { retailer: p.retailer, price: p.price, url: p.url, history: [] },
+            ...Array.from(retailerMap.values()).map(o => ({ retailer: o.retailer, price: o.price, url: o.url, history: [] })),
+          ].sort((a, b) => a.price - b.price),
+        });
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        fetch(`/api/product/${slug}`)
+          .then(res => res.json())
+          .then(data => { setProduct(data.product); setLoading(false); })
+          .catch(() => setLoading(false));
+      });
   }, [slug]);
 
   if (loading) {

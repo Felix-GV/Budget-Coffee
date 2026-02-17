@@ -40,14 +40,30 @@ function SearchResults() {
   useEffect(() => {
     if (!q) return;
     setLoading(true);
-    fetch(`/api/search?q=${encodeURIComponent(q)}`)
-      .then((res) => res.json())
+    // Try static JSON first (works on Netlify), fall back to live API
+    fetch('/data/products.json')
+      .then(res => res.ok ? res.json() : Promise.reject())
       .then((data) => {
-        setProducts(data.products || []);
-        setSources(data.sources || []);
+        const words = q.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+        const all = (data.products || []).filter((p: CoffeeProduct) => {
+          const haystack = `${p.name} ${p.brand} ${p.category}`.toLowerCase();
+          return words.some(w => haystack.includes(w));
+        });
+        setProducts(all);
+        setSources([...new Set<string>(all.map((p: CoffeeProduct) => p.retailer))]);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        // Fall back to live API (local dev)
+        fetch(`/api/search?q=${encodeURIComponent(q)}`)
+          .then(res => res.json())
+          .then(data => {
+            setProducts(data.products || []);
+            setSources(data.sources || []);
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
+      });
   }, [q]);
 
   const categories = ['all', ...new Set(products.map(p => p.category))];

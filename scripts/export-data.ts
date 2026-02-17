@@ -55,9 +55,17 @@ async function main() {
 
   console.log(`\n📦 Total: ${allProducts.length} products`);
 
+  // Write to both src/data (for server import) and public/data (for client fetch)
   const outDir = join(process.cwd(), 'src', 'data');
+  const pubDir = join(process.cwd(), 'public', 'data');
   mkdirSync(outDir, { recursive: true });
+  mkdirSync(pubDir, { recursive: true });
   const outPath = join(outDir, 'products.json');
+  writeFileSync(join(pubDir, 'products.json'), JSON.stringify({
+    scrapedAt: new Date().toISOString(),
+    count: allProducts.length,
+    products: allProducts,
+  }, null, 2));
 
   writeFileSync(outPath, JSON.stringify({
     scrapedAt: new Date().toISOString(),
