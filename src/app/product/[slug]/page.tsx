@@ -46,23 +46,59 @@ export default function ProductPage() {
 
         const p = found as Product & { slug: string; category: string; retailer: string; price: number; url: string; brand: string };
 
-        // Find best matching product per other retailer using name similarity
-        const stopWords = new Set(['coffee','pack','the','and','with','for','from','each','per','roast','blend','dark','medium','light','organic','fair','trade','ground','beans','instant','capsules','pods']);
-        const nameWords = p.name.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-        const brand = p.brand?.toLowerCase() || '';
+        // Strict matching: same product AND same size across retailers
+        function extractCount(name: string): number | null {
+          const m = name.toLowerCase().match(/\bpack\s+of\s+(\d+)\b/)
+            || name.toLowerCase().match(/(?:x\s*)(\d+)\s*(?:pack|pk|capsule|pod|sachet|serve|ct|count|stick)s?\b/)
+            || name.toLowerCase().match(/\b(\d+)\s*(?:pack|pk|capsule|pod|sachet|serve|ct|count|stick)s?\b/);
+          return m ? parseInt(m[1]) : null;
+        }
+        function extractWeight(name: string): number | null {
+          const kg = name.toLowerCase().match(/(\d+(?:\.\d+)?)\s*kg/);
+          const g = name.toLowerCase().match(/(\d+(?:\.\d+)?)\s*g(?:ram)?s?\b/);
+          if (kg) return Math.round(parseFloat(kg[1]) * 1000);
+          if (g) return Math.round(parseFloat(g[1]));
+          return null;
+        }
+
+        const pWeight = extractWeight(p.name);
+        const pCount = extractCount(p.name);
+        const pBrand = p.brand?.toLowerCase() || '';
+        const STOP = new Set(['coffee','pack','the','and','with','for','from','each','per','roast','blend','dark','medium','light','organic','fair','trade','ground','beans','instant','capsules','pods','espresso','premium']);
+        const pWords = new Set(p.name.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)));
 
         const retailerMap = new Map<string, { product: typeof p; score: number }>();
         for (const other of products as Array<typeof p>) {
           if (other.retailer === p.retailer) continue;
-          const otherLower = other.name.toLowerCase();
-          const otherBrand = other.brand?.toLowerCase() || '';
-
-          // Score: brand match + word overlap
+          const oBrand = other.brand?.toLowerCase() || '';
           let score = 0;
-          if (brand && otherBrand && (brand === otherBrand || otherLower.includes(brand) || brand.includes(otherBrand))) score += 5;
-          score += nameWords.filter(w => otherLower.includes(w)).length;
 
-          if (score < 2) continue; // Not similar enough
+          // Brand must match
+          if (pBrand && oBrand) {
+            if (pBrand === oBrand) score += 8;
+            else if (pBrand.split(' ')[0] === oBrand.split(' ')[0]) score += 4;
+            else score -= 10; // different brand = reject
+          }
+
+          // Name word overlap
+          const oWords = other.name.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
+          score += oWords.filter(w => pWords.has(w)).length * 2;
+
+          // Size match — weight
+          const oWeight = extractWeight(other.name);
+          if (pWeight && oWeight) {
+            if (Math.abs(pWeight - oWeight) / Math.max(pWeight, oWeight) < 0.05) score += 10;
+            else score -= 15; // different weight = reject
+          }
+
+          // Size match — count (10pk vs 20pk = different product)
+          const oCount = extractCount(other.name);
+          if (pCount && oCount) {
+            if (pCount === oCount) score += 10;
+            else score -= 15; // different count = reject
+          }
+
+          if (score < 10) continue; // Minimum confidence threshold
 
           const existing = retailerMap.get(other.retailer);
           if (!existing || score > existing.score) {

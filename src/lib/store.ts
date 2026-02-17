@@ -46,18 +46,14 @@ export async function getProductWithAlternatives(slug: string) {
     args: [product.category as string, product.retailer as string],
   });
 
-  const stopWords = new Set(['coffee','pack','the','and','with','for','from','each','per','roast','blend','dark','medium','light','organic','ground','beans','instant','capsules','pods']);
-  const nameWords = (product.name as string).toLowerCase().split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-  const brand = (product.brand as string)?.toLowerCase() || '';
-
+  const { scoreProductMatch } = await import('./matchProducts');
   const retailerMap = new Map<string, { row: typeof othersRes.rows[0]; score: number }>();
   for (const row of othersRes.rows) {
-    const otherLower = (row.name as string).toLowerCase();
-    const otherBrand = (row.brand as string)?.toLowerCase() || '';
-    let score = 0;
-    if (brand && otherBrand && (brand === otherBrand || otherLower.includes(brand) || brand.includes(otherBrand))) score += 5;
-    score += nameWords.filter(w => otherLower.includes(w)).length;
-    if (score < 2) continue;
+    const score = scoreProductMatch(
+      product.name as string, product.brand as string,
+      row.name as string, row.brand as string,
+    );
+    if (score < 10) continue;
     const existing = retailerMap.get(row.retailer as string);
     if (!existing || score > existing.score) retailerMap.set(row.retailer as string, { row, score });
   }
