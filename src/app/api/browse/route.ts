@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { browseStaticProducts } from '@/lib/staticData';
+import { browseStaticProducts, getStaticProducts } from '@/lib/staticData';
 
-const IS_STATIC = process.env.NEXT_PUBLIC_STATIC_DATA === 'true' || process.env.NETLIFY === 'true';
+const IS_STATIC = !!process.env.NETLIFY || process.env.NEXT_PUBLIC_STATIC_DATA === 'true';
 
 const categorySearchTerms: Record<string, string> = {
   beans: 'coffee beans',
@@ -16,7 +16,8 @@ const categorySearchTerms: Record<string, string> = {
 export async function GET(request: NextRequest) {
   const category = request.nextUrl.searchParams.get('category') || 'all';
 
-  if (IS_STATIC) {
+  const staticProducts = getStaticProducts();
+  if (IS_STATIC || staticProducts.length > 0) {
     const products = browseStaticProducts(category);
     const sources = [...new Set(products.map(p => p.retailer))];
     return NextResponse.json({ products, category, sources });
@@ -31,10 +32,7 @@ export async function GET(request: NextRequest) {
     ? Object.values(categorySearchTerms).filter(t => t !== 'coffee').map(t => searchAmazon(t))
     : [searchAmazon(categorySearchTerms[category] || categorySearchTerms.all)];
 
-  const results = await Promise.allSettled([
-    browseCoffeeCategory(category),
-    ...amazonSearches,
-  ]);
+  const results = await Promise.allSettled([browseCoffeeCategory(category), ...amazonSearches]);
 
   const seen = new Set<string>();
   const allProducts = results.flatMap(r => r.status === 'fulfilled' ? r.value : []).filter(p => {
@@ -46,6 +44,5 @@ export async function GET(request: NextRequest) {
 
   const withSlugs = persistProducts(allProducts);
   const sources = [...new Set(withSlugs.map(p => p.retailer))];
-
   return NextResponse.json({ products: withSlugs, category, sources });
 }

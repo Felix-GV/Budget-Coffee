@@ -1,6 +1,5 @@
 /**
  * Reads from src/data/products.json for static/Netlify deployments.
- * Used as fallback when SQLite is not available.
  */
 
 import type { CoffeeProduct } from './scrapers/woolworths';
@@ -11,19 +10,13 @@ interface StaticData {
   products: (CoffeeProduct & { slug: string })[];
 }
 
-let _cache: StaticData | null = null;
+// Direct import — bundled at build time by Next.js
+import productsData from '../data/products.json';
+
+const data = productsData as unknown as StaticData;
 
 export function getStaticProducts(): (CoffeeProduct & { slug: string })[] {
-  if (_cache) return _cache.products;
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const data = require('../../src/data/products.json') as StaticData;
-    _cache = data;
-    return data.products;
-  } catch {
-    return [];
-  }
+  return data?.products ?? [];
 }
 
 export function searchStaticProducts(query: string): (CoffeeProduct & { slug: string })[] {
