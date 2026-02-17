@@ -44,3 +44,4 @@ bargain.db-shm
 bargain.db-wal
 node_modules
 .next
+.env.local
