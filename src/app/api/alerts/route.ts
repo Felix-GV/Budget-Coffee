@@ -8,19 +8,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Upsert product
-  let product = db.prepare('SELECT id FROM products WHERE slug = ?').get(productSlug) as { id: number } | undefined;
+  let productRes = await db.execute({
+    sql: 'SELECT id FROM products WHERE slug = ?',
+    args: [productSlug],
+  });
 
-  if (!product) {
-    const result = db.prepare('INSERT INTO products (name, slug) VALUES (?, ?)').run(productName, productSlug);
-    product = { id: result.lastInsertRowid as number };
+  let productId: number;
+
+  if (!productRes.rows.length) {
+    const result = await db.execute({
+      sql: 'INSERT INTO products (name, slug, retailer) VALUES (?, ?, ?) RETURNING id',
+      args: [productName, productSlug, 'unknown'],
+    });
+    productId = result.rows[0].id as number;
+  } else {
+    productId = productRes.rows[0].id as number;
   }
 
-  db.prepare('INSERT INTO alerts (product_id, phone, target_price) VALUES (?, ?, ?)').run(
-    product.id,
-    phone,
-    targetPrice
-  );
+  await db.execute({
+    sql: 'INSERT INTO alerts (product_id, phone, target_price) VALUES (?, ?, ?)',
+    args: [productId, phone, targetPrice],
+  });
 
-  return NextResponse.json({ success: true, message: `Alert set! We'll SMS ${phone} when the price drops below $${targetPrice}.` });
+  return NextResponse.json({
+    success: true,
+    message: `Alert set! We'll notify ${phone} when the price drops below $${targetPrice}.`,
+  });
 }

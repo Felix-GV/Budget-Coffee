@@ -25,7 +25,7 @@ function categoriseCoffee(name: string): string {
   if (lower.includes('capsule') || lower.includes('pod') || lower.includes('nespresso') || lower.includes('dolce gusto')) return 'Pods & Capsules';
   if (lower.includes('sachet') || lower.includes('stick') || lower.includes('mix')) return 'Sachets';
   if (lower.includes('cold brew') || lower.includes('iced')) return 'Cold Brew';
-  return 'Other';
+  return 'Ground';
 }
 
 export async function searchWoolworths(query: string): Promise<CoffeeProduct[]> {

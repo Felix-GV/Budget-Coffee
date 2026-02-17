@@ -10,7 +10,7 @@ function categoriseCoffee(name: string): string {
   if (lower.includes('capsule') || lower.includes('pod') || lower.includes('nespresso') || lower.includes('dolce gusto')) return 'Pods & Capsules';
   if (lower.includes('sachet') || lower.includes('stick') || lower.includes('mix')) return 'Sachets';
   if (lower.includes('cold brew') || lower.includes('iced')) return 'Cold Brew';
-  return 'Other';
+  return 'Ground'; // Default — most uncategorised coffee is ground
 }
 
 export async function searchAmazon(query: string): Promise<CoffeeProduct[]> {
@@ -34,7 +34,14 @@ export async function searchAmazon(query: string): Promise<CoffeeProduct[]> {
 
   $('[data-component-type="s-search-result"]').each(function () {
     const card = $(this);
-    const title = card.find('h2 span').text().trim();
+    // Get the full title text — Amazon sometimes splits brand/name across spans
+    const titleSpans = card.find('h2 span');
+    let title = '';
+    titleSpans.each(function() {
+      const t = $(this).text().trim();
+      if (t && t.length > title.length) title = t; // take the longest span (full title)
+    });
+    title = title.trim();
     const priceWhole = card.find('.a-price-whole').first().text().trim().replace(',', '').replace(/\.$/, '');
     const rawFrac = card.find('.a-price-fraction').first().text().trim().replace('.', '');
     // Pad single digit fractions (9 → 90, not 9)
