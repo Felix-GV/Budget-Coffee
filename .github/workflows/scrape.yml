@@ -20,7 +20,10 @@ jobs:
         run: npm ci
 
       - name: Run scraper
+        run: |
+          export TURSO_DB_URL=$(echo "$TURSO_DB_URL_RAW" | tr -d '[:space:]')
+          export TURSO_DB_TOKEN=$(echo "$TURSO_DB_TOKEN_RAW" | tr -d '[:space:]')
+          npx tsx scripts/scrape-turso.ts
         env:
-          TURSO_DB_URL: ${{ secrets.TURSO_DB_URL }}
-          TURSO_DB_TOKEN: ${{ secrets.TURSO_DB_TOKEN }}
-        run: npx tsx scripts/scrape-turso.ts
+          TURSO_DB_URL_RAW: ${{ secrets.TURSO_DB_URL }}
+          TURSO_DB_TOKEN_RAW: ${{ secrets.TURSO_DB_TOKEN }}
